@@ -1,0 +1,51 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Leasetracker Smartcar token-exchange backend (test setup)
+
+Parameters:
+  SmartcarApplicationId:
+    Type: String
+    Default: a9579813-bb54-4ca3-b269-546b305d269e   # public identifier, not a secret
+  AppApiKey:
+    Type: String
+    NoEcho: true            # shared key the phone app sends; you choose it at deploy time
+    MinLength: 20
+
+Resources:
+  # Where Smartcar tokens are stored (replaces data/audi-connection.json)
+  TokensTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions: [{AttributeName: id, AttributeType: S}]
+      KeySchema: [{AttributeName: id, KeyType: HASH}]
+
+  # The Smartcar client secret. Created EMPTY; you paste the real value in the AWS console.
+  SmartcarSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: Smartcar client secret (set value manually)
+      SecretString: '{"client_secret":"REPLACE_ME"}'
+
+  Fn:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: nodejs20.x
+      Handler: index.handler
+      CodeUri: src/
+      Timeout: 15
+      Environment:
+        Variables:
+          TABLE: !Ref TokensTable
+          SECRET_ARN: !Ref SmartcarSecret
+          SMARTCAR_APPLICATION_ID: !Ref SmartcarApplicationId
+          APP_API_KEY: !Ref AppApiKey
+      Policies:
+        - DynamoDBCrudPolicy: {TableName: !Ref TokensTable}
+        - AWSSecretsManagerGetSecretValuePolicy: {SecretArn: !Ref SmartcarSecret}
+      FunctionUrlConfig:
+        AuthType: NONE        # public HTTPS URL; our code checks the API key itself
+
+Outputs:
+  FunctionUrl:
+    Value: !GetAtt FnUrl.FunctionUrl
