@@ -1,0 +1,13 @@
+[Unit]
+Description=Leasetracker Smartcar backend
+After=network-online.target
+
+[Service]
+User=leasetracker
+EnvironmentFile=/etc/leasetracker.env
+ExecStart=/usr/bin/node /opt/leasetracker/server.mjs
+Restart=on-failure
+StateDirectory=leasetracker
+
+[Install]
+WantedBy=multi-user.target
